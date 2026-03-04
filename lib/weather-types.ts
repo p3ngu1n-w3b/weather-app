@@ -49,3 +49,55 @@ export interface WeatherbitErrorResponse {
   error?: string;
   [key: string]: unknown;
 }
+
+/** 16-day forecast daily item @see https://www.weatherbit.io/api/weather-forecast-16-day */
+export interface WeatherbitForecastDay {
+  datetime: string;
+  valid_date: string;
+  ts: number;
+  high_temp: number;
+  low_temp: number;
+  temp?: number;
+  weather: WeatherbitWeather;
+  rh: number;
+  wind_spd: number;
+  wind_cdir_full: string;
+  pop: number;
+  precip: number;
+  snow?: number;
+  uv?: number;
+}
+
+export interface WeatherbitForecastResponse {
+  city_name: string;
+  country_code: string;
+  state_code?: string;
+  lat: number;
+  lon: number;
+  timezone: string;
+  data: WeatherbitForecastDay[];
+}
+
+/** Daily historical item @see https://www.weatherbit.io/api/historical-weather-daily */
+export interface WeatherbitHistoryDay {
+  datetime: string;
+  ts: number;
+  max_temp: number;
+  min_temp: number;
+  temp: number;
+  precip: number;
+  snow?: number;
+  rh?: number;
+  wind_spd?: number;
+  clouds?: number;
+}
+
+export interface WeatherbitHistoryResponse {
+  city_name: string;
+  country_code: string;
+  state_code?: string;
+  lat: number;
+  lon: number;
+  timezone: string;
+  data: WeatherbitHistoryDay[];
+}

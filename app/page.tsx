@@ -1,41 +1,103 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SearchBar } from "@/components/search-bar";
 import { CurrentWeather } from "@/components/current-weather";
+import { ForecastAndHistory } from "@/components/forecast-and-history";
 import { useWeather } from "@/hooks/use-weather";
-import { getRecentQueries } from "@/lib/weather-cache";
+import { useForecastAndHistory } from "@/hooks/use-forecast-history";
+import { getRecentQueries, clearRecentQueries } from "@/lib/weather-cache";
+import { SA_COUNTRY, SA_TIMEZONE } from "@/lib/constants";
 
 export default function Home() {
   const { data, status, error, fetchWeather, fetchByCoords } = useWeather();
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
+  const [locationDisplayName, setLocationDisplayName] = useState<string | null>(null);
+  const pendingCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
+  const dataRef = useRef(data);
+  dataRef.current = data;
+
+  const coords = useMemo(() => {
+    const cur = data?.data?.[0];
+    if (!cur?.lat || !cur?.lon) return null;
+    return {
+      lat: cur.lat,
+      lon: cur.lon,
+      city: cur.city_name,
+      country: SA_COUNTRY,
+      timezone: SA_TIMEZONE,
+    };
+  }, [data]);
+
+  const {
+    forecast,
+    history,
+    forecastStatus,
+    historyStatus,
+    forecastError,
+    historyError,
+  } = useForecastAndHistory(coords);
 
   useEffect(() => {
     setRecentQueries(getRecentQueries(5));
   }, [data]); // refresh recent list when new data is loaded
 
-  const handleSearch = (city: string, country?: string) => {
-    fetchWeather(city, country);
-  };
+  const handleClearRecents = useCallback(() => {
+    clearRecentQueries();
+    setRecentQueries([]);
+  }, []);
 
-  const handleUseLocation = () => {
+  const handleSearch = useCallback(
+    (city: string) => {
+      setLocationDisplayName(null);
+      pendingCoordsRef.current = null;
+      fetchWeather(city, SA_COUNTRY);
+    },
+    [fetchWeather]
+  );
+
+  const handleUseLocation = useCallback(() => {
     if (!navigator.geolocation) return;
+    setLocationDisplayName(null);
+    pendingCoordsRef.current = null;
     navigator.geolocation.getCurrentPosition(
-      (pos) => fetchByCoords(pos.coords.latitude, pos.coords.longitude),
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        pendingCoordsRef.current = { lat, lon };
+        fetchByCoords(lat, lon);
+        fetch(`/api/geocode/reverse?${new URLSearchParams({ lat: String(lat), lon: String(lon) })}`)
+          .then((r) => r.json())
+          .then((body) => {
+            const pending = pendingCoordsRef.current;
+            if (!pending || !body?.displayName) return;
+            const cur = dataRef.current?.data?.[0];
+            const matches =
+              cur &&
+              Math.abs(cur.lat - pending.lat) < 0.02 &&
+              Math.abs(cur.lon - pending.lon) < 0.02;
+            if (matches) setLocationDisplayName(body.displayName);
+          })
+          .catch(() => { });
+      },
       () => { },
-      { maximumAge: 600000 }
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0,
+      }
     );
-  };
+  }, [fetchByCoords]);
 
   return (
     <div className="min-h-screen bg-linear-to-b from-sky-50 to-zinc-100 dark:from-zinc-900 dark:to-zinc-950">
-      <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
+      <main className="mx-auto px-4 py-8 sm:px-6 sm:py-12">
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl">
-            Weather
+            South African Weather
           </h1>
           <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Current conditions via{" "}
+            Current conditions for cities in South Africa via{" "}
             <a
               href="https://www.weatherbit.io/"
               target="_blank"
@@ -51,6 +113,7 @@ export default function Home() {
           <SearchBar
             onSearch={handleSearch}
             onUseLocation={handleUseLocation}
+            onClearRecents={handleClearRecents}
             isLoading={status === "loading"}
             recentQueries={recentQueries}
           />
@@ -78,7 +141,20 @@ export default function Home() {
           )}
 
           {status === "success" && data?.data?.[0] && (
-            <CurrentWeather data={data.data[0]} />
+            <>
+              <CurrentWeather
+                data={data.data[0]}
+                locationDisplayName={locationDisplayName}
+              />
+              <ForecastAndHistory
+                forecast={forecast}
+                history={history}
+                forecastStatus={forecastStatus}
+                historyStatus={historyStatus}
+                forecastError={forecastError}
+                historyError={historyError}
+              />
+            </>
           )}
         </div>
       </main>

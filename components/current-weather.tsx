@@ -2,13 +2,15 @@
 
 import Image from "next/image";
 import type { WeatherbitCurrentData } from "@/lib/weather-types";
-import { weatherIconUrl } from "@/lib/weather-utils";
+import { weatherIconUrl, formatCurrentWeatherDate } from "@/lib/weather-utils";
 
 export interface CurrentWeatherProps {
   data: WeatherbitCurrentData;
+  /** When set (e.g. from "Use my location" + reverse geocode), shown instead of API city name. */
+  locationDisplayName?: string | null;
 }
 
-export function CurrentWeather({ data }: CurrentWeatherProps) {
+export function CurrentWeather({ data, locationDisplayName }: CurrentWeatherProps) {
   const {
     city_name,
     state_code,
@@ -23,14 +25,18 @@ export function CurrentWeather({ data }: CurrentWeatherProps) {
     vis,
     sunrise,
     sunset,
+    datetime,
+    timezone,
   } = data;
 
-  const location = [city_name, state_code, country_code].filter(Boolean).join(", ");
+  const location =
+    locationDisplayName?.trim() ||
+    [city_name, state_code, country_code].filter(Boolean).join(", ");
   const iconUrl = weatherIconUrl(weather.icon);
 
   return (
     <article
-      className="animate-fade-in-up rounded-2xl border border-zinc-200 bg-white/80 p-6 shadow-lg duration-500 dark:border-zinc-700 dark:bg-zinc-800/80 md:p-8"
+      className="animate-fade-in-up rounded-2xl border border-zinc-200 bg-white/80 p-6 shadow-lg duration-500 md:p-8"
       aria-label={`Current weather in ${location}`}
     >
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
@@ -50,6 +56,9 @@ export function CurrentWeather({ data }: CurrentWeatherProps) {
               {location}
             </h2>
             <p className="mt-1 text-zinc-600 dark:text-zinc-400">{weather.description}</p>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              {formatCurrentWeatherDate(datetime, timezone)}
+            </p>
           </div>
         </div>
         <div className="flex items-baseline gap-2 border-zinc-200 sm:border-l sm:pl-6 dark:border-zinc-600">

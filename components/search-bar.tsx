@@ -3,27 +3,24 @@
 import { useCallback, useState } from "react";
 
 export interface SearchBarProps {
-  onSearch: (city: string, country?: string) => void;
+  onSearch: (city: string) => void;
   onUseLocation?: () => void;
+  onClearRecents?: () => void;
   isLoading?: boolean;
   recentQueries?: string[];
 }
 
-/**
- * Parses "City, Country" or "City, ST" into [city, country].
- */
-function parseQuery(input: string): { city: string; country?: string } {
+/** Parse input to city name (South Africa only; any text after a comma is ignored). */
+function parseCity(input: string): string {
   const trimmed = input.trim();
   const comma = trimmed.indexOf(",");
-  if (comma === -1) return { city: trimmed };
-  const city = trimmed.slice(0, comma).trim();
-  const country = trimmed.slice(comma + 1).trim();
-  return { city, country: country || undefined };
+  return comma === -1 ? trimmed : trimmed.slice(0, comma).trim();
 }
 
 export function SearchBar({
   onSearch,
   onUseLocation,
+  onClearRecents,
   isLoading = false,
   recentQueries = [],
 }: SearchBarProps) {
@@ -32,16 +29,16 @@ export function SearchBar({
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      const { city, country } = parseQuery(value);
-      if (city) onSearch(city, country);
+      const city = parseCity(value);
+      if (city) onSearch(city);
     },
     [value, onSearch]
   );
 
   const handleRecentClick = useCallback(
     (query: string) => {
-      const { city, country } = parseQuery(query);
-      if (city) onSearch(city, country);
+      const city = parseCity(query);
+      if (city) onSearch(city);
       setValue(query);
     },
     [onSearch]
@@ -51,14 +48,14 @@ export function SearchBar({
     <div className="w-full max-w-md animate-fade-in">
       <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <label htmlFor="weather-search" className="sr-only">
-          City or location
+          South African city
         </label>
         <input
           id="weather-search"
           type="text"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="e.g. London, UK or New York"
+          placeholder="e.g. Cape Town, Johannesburg"
           disabled={isLoading}
           className="min-w-0 flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 shadow-sm transition placeholder:text-zinc-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-400"
           aria-describedby="search-hint"
@@ -82,10 +79,10 @@ export function SearchBar({
         </button>
       )}
       <p id="search-hint" className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-        Enter a city name; add a country code (e.g. UK, US) if needed.
+        Search by South African city.
       </p>
       {recentQueries.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="text-xs text-zinc-500 dark:text-zinc-400">Recent:</span>
           {recentQueries.map((q) => (
             <button
@@ -97,6 +94,15 @@ export function SearchBar({
               {q}
             </button>
           ))}
+          {onClearRecents && (
+            <button
+              type="button"
+              onClick={onClearRecents}
+              className="text-xs text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300"
+            >
+              Clear
+            </button>
+          )}
         </div>
       )}
     </div>

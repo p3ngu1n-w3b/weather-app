@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Weather | Current conditions",
-  description: "Current weather for any location, powered by Weatherbit API.",
+  title: "South African Weather",
+  description: "Current weather and forecast for South African cities, powered by Weatherbit API.",
 };
 
 export default function RootLayout({

@@ -6,28 +6,28 @@ import { SearchBar } from "../search-bar";
 describe("SearchBar", () => {
   it("renders search input and submit button", () => {
     render(<SearchBar onSearch={vi.fn()} />);
-    expect(screen.getByPlaceholderText(/London, UK or New York/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Cape Town, Johannesburg/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /search/i })).toBeInTheDocument();
   });
 
-  it("calls onSearch with parsed city and country when form is submitted", async () => {
+  it("calls onSearch with city when form is submitted", async () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
     render(<SearchBar onSearch={onSearch} />);
-    const input = screen.getByRole("textbox", { name: /city or location/i });
-    await user.type(input, "London, UK");
+    const input = screen.getByRole("textbox", { name: /south african city/i });
+    await user.type(input, "Cape Town");
     await user.click(screen.getByRole("button", { name: /search/i }));
-    expect(onSearch).toHaveBeenCalledWith("London", "UK");
+    expect(onSearch).toHaveBeenCalledWith("Cape Town");
   });
 
-  it("calls onSearch with city only when no comma", async () => {
+  it("strips text after comma (SA only)", async () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
     render(<SearchBar onSearch={onSearch} />);
-    const input = screen.getByRole("textbox", { name: /city or location/i });
-    await user.type(input, "Tokyo");
+    const input = screen.getByRole("textbox", { name: /south african city/i });
+    await user.type(input, "Johannesburg, ZA");
     await user.click(screen.getByRole("button", { name: /search/i }));
-    expect(onSearch).toHaveBeenCalledWith("Tokyo", undefined);
+    expect(onSearch).toHaveBeenCalledWith("Johannesburg");
   });
 
   it("disables submit when input is empty", () => {
@@ -39,9 +39,9 @@ describe("SearchBar", () => {
     const user = userEvent.setup();
     const onSearch = vi.fn();
     render(
-      <SearchBar onSearch={onSearch} recentQueries={["London, UK", "Paris"]} />
+      <SearchBar onSearch={onSearch} recentQueries={["Cape Town", "Johannesburg"]} />
     );
-    await user.click(screen.getByText("London, UK"));
-    expect(onSearch).toHaveBeenCalledWith("London", "UK");
+    await user.click(screen.getByText("Cape Town"));
+    expect(onSearch).toHaveBeenCalledWith("Cape Town");
   });
 });
