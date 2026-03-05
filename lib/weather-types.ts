@@ -101,3 +101,9 @@ export interface WeatherbitHistoryResponse {
   timezone: string;
   data: WeatherbitHistoryDay[];
 }
+
+/** Selection for "main display shows this day" from forecast/history tiles. */
+export type SelectedDay =
+  | { type: "forecast"; day: WeatherbitForecastDay }
+  | { type: "history"; day: WeatherbitHistoryDay }
+  | null;

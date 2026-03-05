@@ -8,9 +8,11 @@ export interface CurrentWeatherProps {
   data: WeatherbitCurrentData;
   /** When set (e.g. from "Use my location" + reverse geocode), shown instead of API city name. */
   locationDisplayName?: string | null;
+  /** When true, render without own card (inside a single block). */
+  embedded?: boolean;
 }
 
-export function CurrentWeather({ data, locationDisplayName }: CurrentWeatherProps) {
+export function CurrentWeather({ data, locationDisplayName, embedded }: CurrentWeatherProps) {
   const {
     city_name,
     state_code,
@@ -37,7 +39,11 @@ export function CurrentWeather({ data, locationDisplayName }: CurrentWeatherProp
 
   return (
     <article
-      className="weather-card glass-card w-full animate-fade-in-up rounded-2xl overflow-hidden p-5 sm:p-6 md:p-8"
+      className={
+        embedded
+          ? "w-full overflow-hidden p-5 sm:p-6 md:p-8"
+          : "weather-card glass-card w-full animate-fade-in-up rounded-2xl overflow-hidden p-5 sm:p-6 md:p-8"
+      }
       aria-label={`Current weather in ${location}`}
     >
       <div className="p-5 sm:p-0 sm:pt-1">
@@ -56,21 +62,21 @@ export function CurrentWeather({ data, locationDisplayName }: CurrentWeatherProp
               />
             </div>
             <div className="min-w-0">
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 sm:text-3xl md:text-[2rem]">
+              <h2 className="text-2xl font-bold text-slate-800 sm:text-3xl md:text-[2rem]">
                 {location}
               </h2>
-              <p className="mt-0.5 text-slate-600 dark:text-slate-300">{weather.description}</p>
-              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-0.5 text-slate-600">{weather.description}</p>
+              <p className="mt-1.5 text-xs text-slate-500">
                 {formatCurrentWeatherDate(datetime, timezone)}
               </p>
             </div>
           </div>
-          <div className="flex flex-col gap-0.5 sm:items-end sm:border-l sm:border-slate-200/60 sm:pl-6 md:pl-8 dark:sm:border-slate-500/30">
-            <span className="text-5xl font-bold tabular-nums text-slate-800 dark:text-slate-100 sm:text-6xl md:text-7xl">
+          <div className="flex flex-col gap-0.5 sm:items-end sm:border-l sm:border-slate-200/60 sm:pl-6 md:pl-8">
+            <span className="text-5xl font-bold tabular-nums text-slate-800 sm:text-6xl md:text-7xl">
               {Math.round(temp)}°
             </span>
             {app_temp !== temp && (
-              <span className="text-base font-medium text-sky-600 dark:text-sky-400">
+              <span className="text-base font-medium text-sky-600">
                 Feels like {Math.round(app_temp)}°
               </span>
             )}
@@ -92,11 +98,11 @@ export function CurrentWeather({ data, locationDisplayName }: CurrentWeatherProp
 
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-slate-100/80 px-3.5 py-2.5 dark:bg-slate-800/50">
-      <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+    <div className="rounded-xl bg-slate-100/80 px-3.5 py-2.5">
+      <dt className="text-xs font-semibold uppercase tracking-wider text-slate-500">
         {label}
       </dt>
-      <dd className="mt-0.5 font-semibold text-slate-800 dark:text-slate-200">{value}</dd>
+      <dd className="mt-0.5 font-semibold text-slate-800">{value}</dd>
     </div>
   );
 }
