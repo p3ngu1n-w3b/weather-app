@@ -29,6 +29,15 @@ export default function Home() {
     };
   }, [data]);
 
+  const currentLocation = useMemo(() => {
+    const cur = data?.data?.[0];
+    if (!cur) return null;
+    return (
+      locationDisplayName?.trim() ||
+      [cur.city_name, cur.state_code, cur.country_code].filter(Boolean).join(", ")
+    ) || null;
+  }, [data, locationDisplayName]);
+
   const {
     forecast,
     history,
@@ -90,53 +99,57 @@ export default function Home() {
   }, [fetchByCoords]);
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-sky-50 to-zinc-100 dark:from-zinc-900 dark:to-zinc-950">
-      <main className="mx-auto px-4 py-8 sm:px-6 sm:py-12">
-        <header className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl">
-            South African Weather
-          </h1>
-          <p className="mt-2 text-zinc-600 dark:text-zinc-400">
-            Current conditions for cities in South Africa via{" "}
-            <a
-              href="https://www.weatherbit.io/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:no-underline"
-            >
-              Weatherbit
-            </a>
-          </p>
+    <div className="sky-bg min-h-screen transition-colors duration-300">
+      <main className="mx-auto w-full max-w-2xl px-4 pb-12 pt-6 sm:px-6 sm:pt-8 sm:pb-20 md:max-w-3xl md:px-8 md:pt-10 md:pb-24">
+        <header className="mb-6 flex flex-col gap-4 sm:mb-8 md:mb-10 md:flex-row md:items-center md:justify-between md:gap-6">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 sm:text-3xl md:text-[1.75rem]">
+              South African Weather
+            </h1>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400 md:mt-1.5">
+              Via{" "}
+              <a
+                href="https://www.weatherbit.io/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-sky-600 underline decoration-sky-300 hover:decoration-sky-500 dark:text-sky-400 dark:decoration-sky-600 dark:hover:decoration-sky-400"
+              >
+                Weatherbit
+              </a>
+            </p>
+          </div>
+          <div className="w-full min-w-0 md:max-w-md md:shrink-0">
+            <SearchBar
+              onSearch={handleSearch}
+              onUseLocation={handleUseLocation}
+              onClearRecents={handleClearRecents}
+              isLoading={status === "loading"}
+              recentQueries={recentQueries}
+              currentLocation={currentLocation ?? undefined}
+            />
+          </div>
         </header>
 
-        <div className="flex flex-col items-center gap-6">
-          <SearchBar
-            onSearch={handleSearch}
-            onUseLocation={handleUseLocation}
-            onClearRecents={handleClearRecents}
-            isLoading={status === "loading"}
-            recentQueries={recentQueries}
-          />
-
+        <div className="flex flex-col items-center gap-5 sm:gap-6 md:gap-8">
           {status === "loading" && !data && (
             <div
-              className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white/80 p-8 dark:border-zinc-700 dark:bg-zinc-800/80"
+              className="glass-card w-full animate-fade-in rounded-2xl p-10"
               aria-busy="true"
             >
-              <div className="flex flex-col items-center gap-3">
-                <div className="h-12 w-12 animate-pulse rounded-full bg-sky-200 dark:bg-sky-800" />
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading weather…</p>
+              <div className="flex flex-col items-center gap-4">
+                <div className="h-12 w-12 animate-pulse rounded-full bg-sky-200/80 dark:bg-sky-500/30" />
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Loading weather…</p>
               </div>
             </div>
           )}
 
           {status === "error" && error && (
             <div
-              className="w-full max-w-md rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 dark:border-red-800 dark:bg-red-950/30 dark:text-red-200"
+              className="glass-card w-full animate-fade-in rounded-2xl px-5 py-4 md:px-6 md:py-5"
               role="alert"
             >
-              <p className="font-medium">Unable to load weather</p>
-              <p className="mt-1 text-sm">{error}</p>
+              <p className="font-semibold text-slate-800 dark:text-slate-200">Unable to load weather</p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{error}</p>
             </div>
           )}
 

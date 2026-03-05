@@ -52,10 +52,10 @@ export function ForecastAndHistory({
 
   if (isLoading && !hasData) {
     return (
-      <div className="w-full max-w-2xl animate-fade-in rounded-2xl border border-zinc-200 bg-white/80 p-6 dark:border-zinc-700 dark:bg-zinc-800/80">
-        <div className="flex items-center justify-center gap-2 py-4">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
-          <span className="text-sm text-zinc-500 dark:text-zinc-400">
+      <div className="glass-card w-full animate-fade-in rounded-2xl p-6 md:p-8">
+        <div className="flex items-center justify-center gap-3 py-4">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-sky-500 dark:border-slate-600 dark:border-t-sky-400" />
+          <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
             Loading forecast & history…
           </span>
         </div>
@@ -69,19 +69,19 @@ export function ForecastAndHistory({
 
   const containerClass =
     viewMode === "grid"
-      ? "grid gap-3 sm:grid-cols-3"
-      : "flex flex-col gap-2";
+      ? "grid gap-3 sm:grid-cols-3 md:gap-4"
+      : "flex flex-col gap-2 md:gap-3";
 
   return (
     <section
-      className="w-full max-w-2xl animate-fade-in-up rounded-2xl border border-zinc-200 bg-white/80 p-6 shadow-lg dark:border-zinc-700 dark:bg-zinc-800/80 md:p-8"
+      className="weather-card glass-card w-full animate-fade-in-up rounded-2xl p-5 sm:p-6 md:p-8"
       aria-label="3-day forecast and 3-day history"
     >
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 md:mb-6">
+        <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 sm:text-xl md:text-2xl">
           Forecast & History
         </h2>
-        <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-600">
+        <div className="flex rounded-xl bg-slate-100/80 dark:bg-slate-800/50 p-0.5">
           <ViewToggleButton
             active={viewMode === "grid"}
             onClick={() => setViewMode("grid")}
@@ -96,13 +96,17 @@ export function ForecastAndHistory({
       </div>
 
       {forecastDays.length > 0 && (
-        <div className="mb-6">
-          <h3 className="mb-2 text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        <div className="mb-6 md:mb-8">
+          <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 md:mb-3">
             Next 3 days
           </h3>
           <ul className={containerClass} role="list">
-            {forecastDays.map((day) => (
-              <li key={day.valid_date ?? day.datetime}>
+            {forecastDays.map((day, i) => (
+              <li
+                key={day.valid_date ?? day.datetime}
+                className="animate-stagger-in"
+                style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
+              >
                 <ForecastDayCard
                   day={day}
                   variant={viewMode}
@@ -112,7 +116,7 @@ export function ForecastAndHistory({
             ))}
           </ul>
           {forecastError && (
-            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
               {forecastError}
             </p>
           )}
@@ -121,12 +125,16 @@ export function ForecastAndHistory({
 
       {historyDays.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <h3 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
             Past 3 days
           </h3>
           <ul className={containerClass} role="list">
-            {historyDays.map((day) => (
-              <li key={day.datetime}>
+            {historyDays.map((day, i) => (
+              <li
+                key={day.datetime}
+                className="animate-stagger-in"
+                style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
+              >
                 <HistoryDayCard
                   day={day}
                   variant={viewMode}
@@ -136,7 +144,7 @@ export function ForecastAndHistory({
             ))}
           </ul>
           {historyError && (
-            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
               {historyError}
             </p>
           )}
@@ -160,9 +168,9 @@ function ViewToggleButton({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-md px-3 py-1.5 text-sm font-medium transition first:rounded-l-lg last:rounded-r-lg ${active
-        ? "bg-sky-600 text-white dark:bg-sky-500"
-        : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700"
+      className={`rounded-lg px-3.5 py-2 text-sm font-semibold transition first:rounded-l-lg last:rounded-r-lg ${active
+        ? "bg-sky-500 text-white shadow-sm"
+        : "text-slate-600 hover:bg-slate-200/80 dark:text-slate-400 dark:hover:bg-slate-700/80"
         }`}
     >
       {label}
@@ -187,38 +195,38 @@ function ForecastDayCard({
 
   const content = (
     <>
-      <div className="flex items-center gap-2">
-        <div className="relative h-10 w-10 shrink-0">
+      <div className="flex items-center gap-2.5">
+        <div className="relative h-10 w-10 shrink-0 animate-wind-drift sm:h-11 sm:w-11">
           <Image
             src={iconUrl}
             alt={day.weather.description}
-            width={40}
-            height={40}
+            width={44}
+            height={44}
             unoptimized
-            className="object-contain"
+            className="object-contain drop-shadow-sm"
           />
         </div>
         <div className="min-w-0">
-          <p className="font-medium text-zinc-900 dark:text-zinc-100">
+          <p className="font-semibold text-slate-800 dark:text-slate-100">
             {label}
           </p>
-          <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+          <p className="truncate text-xs text-slate-500 dark:text-slate-400">
             {day.weather.description}
           </p>
         </div>
       </div>
       <div className="mt-2 flex items-baseline gap-2 text-sm">
-        <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+        <span className="font-bold text-slate-800 dark:text-slate-100">
           {Math.round(day.high_temp)}° / {Math.round(day.low_temp)}°
         </span>
         {day.precip > 0 && (
-          <span className="text-zinc-500 dark:text-zinc-400">
+          <span className="text-slate-500 dark:text-slate-400">
             {day.precip} mm
           </span>
         )}
       </div>
       {(day.wind_spd > 0 || day.rh > 0) && (
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           Wind {day.wind_spd} m/s · {day.rh}% humidity
         </p>
       )}
@@ -226,7 +234,7 @@ function ForecastDayCard({
   );
 
   const baseClass =
-    "rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-600 dark:bg-zinc-700/50";
+    "rounded-xl bg-slate-100/80 p-3.5 transition hover:bg-slate-200/80 dark:bg-slate-800/50 dark:hover:bg-slate-700/50 md:p-4";
 
   return (
     <article
@@ -252,17 +260,17 @@ function HistoryDayCard({
 
   const content = (
     <>
-      <p className="font-medium text-zinc-900 dark:text-zinc-100">{label}</p>
-      <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">
+      <p className="font-semibold text-slate-800 dark:text-slate-100">{label}</p>
+      <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">
         {Math.round(day.max_temp)}° / {Math.round(day.min_temp)}°
       </p>
       {(day.precip != null && day.precip > 0) && (
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Precip {day.precip} mm
         </p>
       )}
       {day.wind_spd != null && day.wind_spd > 0 && (
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Wind {day.wind_spd} m/s
         </p>
       )}
@@ -270,7 +278,7 @@ function HistoryDayCard({
   );
 
   const baseClass =
-    "rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-600 dark:bg-zinc-700/50";
+    "rounded-xl bg-slate-100/80 p-3.5 transition hover:bg-slate-200/80 dark:bg-slate-800/50 dark:hover:bg-slate-700/50 md:p-4";
 
   return (
     <article
