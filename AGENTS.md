@@ -2,20 +2,34 @@
 
 ## Cursor Cloud specific instructions
 
-This repo is a single Next.js 16 (App Router) + React 19 + TypeScript weather app. There is no database or other backing service — it is a stateless app that proxies the Weatherbit API through its own Next.js API routes. npm is the package manager (`package-lock.json`).
+This repo is **Creative Touch Business Hub** — a single Next.js 16 (App Router) +
+React 19 + TypeScript app that serves as an internal operations platform (clients,
+leads, projects, tasks, content calendar, invoices, team). npm is the package
+manager.
 
 ### Running
 
-- Dev server: `npm run dev` (Turbopack) → http://localhost:3000. Standard commands live in `package.json` (`dev`, `build`, `start`, `lint`, `test`, `test:watch`); see `README.md` for full setup.
-- Node 22 (the VM default) works fine even though `README.md` lists Node 18/20.
+- Dev server: `npm run dev` → http://localhost:3000. Standard scripts live in
+  `package.json` (`dev`, `build`, `start`, `lint`, `test`); see `README.md`.
+- Node 20+ (the VM default Node 22 works).
 
-### Weatherbit API key (needed for live weather)
+### Data layer (non-obvious)
 
-- Live weather (current, forecast, history) requires `WEATHERBIT_API_KEY`. Without it, `/api/weather*` routes return HTTP 503 `"Weather API is not configured."` and the UI shows a graceful "Unable to load weather" message; the UI itself still loads and is interactive.
-- In Cursor Cloud, add `WEATHERBIT_API_KEY` as a secret. Secrets are injected as environment variables, and Next.js reads `process.env.WEATHERBIT_API_KEY` directly — you do NOT need to create `.env.local`. (Locally, `cp .env.example .env.local` per the README also works.)
-- Reverse geocoding (`/api/geocode/reverse`, used by "use my location") calls public Nominatim/OpenStreetMap and needs no key.
+- Persistence is a **local SQLite file** via `better-sqlite3` at
+  `data/creativetouch.db` (git-ignored). No external database or env vars are needed.
+- The schema is created and **seeded automatically on first DB access** (see
+  `lib/db.ts`). To reset to fresh sample data, stop the server and delete the `data/`
+  directory — it is recreated and reseeded on the next request.
+- `better-sqlite3` is a native module and is server-only. It is listed in
+  `serverExternalPackages` in `next.config.ts` so Turbopack/webpack don't bundle it.
+  Only import `lib/db.ts` / `lib/repo.ts` from server code (API route handlers).
+  Client components must use `import type` when referencing types from `lib/repo.ts`.
+- The DB connection is cached on `globalThis` so dev hot-reload does not reopen the
+  handle or re-run seeding.
 
-### Tests / lint caveats
+### Architecture
 
-- `npm test` (Vitest + jsdom) runs without any API key or network — it uses mocked data.
-- As of environment setup, the repo has pre-existing `npm run lint` errors and one failing Vitest test that are NOT caused by environment setup (clean checkout, only `npm install` run). Do not assume the tree is green; verify against `main` before attributing failures to your changes.
+- All data access goes through `lib/repo.ts`; API route handlers under `app/api/*`
+  are thin wrappers (each sets `runtime = "nodejs"` and `dynamic = "force-dynamic"`).
+- UI pages under `app/*` are client components that fetch the JSON REST API via the
+  helpers in `hooks/use-resource.ts`. Shared UI primitives live in `components/ui.tsx`.

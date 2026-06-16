@@ -1,232 +1,223 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { SearchBar } from "@/components/search-bar";
-import { CurrentWeather } from "@/components/current-weather";
-import { DayDetailView } from "@/components/day-detail-view";
-import { ForecastAndHistory } from "@/components/forecast-and-history";
-import { useWeather } from "@/hooks/use-weather";
-import { useForecastAndHistory } from "@/hooks/use-forecast-history";
-import { getRecentQueries, clearRecentQueries } from "@/lib/weather-cache";
-import { SA_COUNTRY, SA_TIMEZONE } from "@/lib/constants";
-import type { SelectedDay } from "@/lib/weather-types";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Badge, Card, Spinner } from "@/components/ui";
+import { formatCurrency, relativeDueLabel, titleCase } from "@/lib/format";
+import type { DashboardStats } from "@/lib/repo";
 
-export default function Home() {
-  const { data, status, error, fetchWeather, fetchByCoords } = useWeather();
-  const [recentQueries, setRecentQueries] = useState<string[]>([]);
-  const [locationDisplayName, setLocationDisplayName] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<SelectedDay>(null);
-  const pendingCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
-  const dataRef = useRef(data);
-  const mainContentRef = useRef<HTMLDivElement>(null);
-  dataRef.current = data;
-
-  // When a day tile is selected, scroll the main summary into view so the user sees the result
-  useEffect(() => {
-    if (selectedDay === null) return;
-    const el = mainContentRef.current;
-    if (!el) return;
-    const id = requestAnimationFrame(() => {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-    return () => cancelAnimationFrame(id);
-  }, [selectedDay]);
-
-  const coords = useMemo(() => {
-    const cur = data?.data?.[0];
-    if (!cur?.lat || !cur?.lon) return null;
-    return {
-      lat: cur.lat,
-      lon: cur.lon,
-      city: cur.city_name,
-      country: SA_COUNTRY,
-      timezone: SA_TIMEZONE,
-    };
-  }, [data]);
-
-  const currentLocation = useMemo(() => {
-    const cur = data?.data?.[0];
-    if (!cur) return null;
-    return (
-      locationDisplayName?.trim() ||
-      [cur.city_name, cur.state_code, cur.country_code].filter(Boolean).join(", ")
-    ) || null;
-  }, [data, locationDisplayName]);
-
-  const {
-    forecast,
-    history,
-    forecastStatus,
-    historyStatus,
-    forecastError,
-    historyError,
-  } = useForecastAndHistory(coords);
-
-  useEffect(() => {
-    setRecentQueries(getRecentQueries(5));
-  }, [data]); // refresh recent list when new data is loaded
-
-  const handleClearRecents = useCallback(() => {
-    clearRecentQueries();
-    setRecentQueries([]);
-  }, []);
-
-  const handleSearch = useCallback(
-    (city: string) => {
-      setLocationDisplayName(null);
-      pendingCoordsRef.current = null;
-      fetchWeather(city, SA_COUNTRY);
-    },
-    [fetchWeather]
+function StatCard({
+  label,
+  value,
+  hint,
+  accent,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  accent: string;
+}) {
+  return (
+    <Card className="p-5">
+      <p className="text-sm font-medium text-slate-500">{label}</p>
+      <p className={`mt-2 text-3xl font-bold tracking-tight ${accent}`}>{value}</p>
+      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+    </Card>
   );
+}
 
-  const handleSelectDay = useCallback((selection: SelectedDay) => {
-    setSelectedDay((prev) => {
-      if (!selection) return null;
-      const key = selection.type === "forecast" ? selection.day.valid_date : selection.day.datetime;
-      const prevKey = prev === null ? null : prev.type === "forecast" ? prev.day.valid_date : prev.day.datetime;
-      return prevKey === key ? null : selection;
-    });
+export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/dashboard", { cache: "no-store" })
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to load dashboard");
+        return r.json();
+      })
+      .then(setStats)
+      .catch((e) => setError(e.message));
   }, []);
 
-  const handleBackToCurrent = useCallback(() => setSelectedDay(null), []);
-
-  const handleUseLocation = useCallback(() => {
-    if (!navigator.geolocation) return;
-    setLocationDisplayName(null);
-    pendingCoordsRef.current = null;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        pendingCoordsRef.current = { lat, lon };
-        fetchByCoords(lat, lon);
-        fetch(`/api/geocode/reverse?${new URLSearchParams({ lat: String(lat), lon: String(lon) })}`)
-          .then((r) => r.json())
-          .then((body) => {
-            const pending = pendingCoordsRef.current;
-            if (!pending || !body?.displayName) return;
-            // Only apply if we're still showing the result of this "Use my location" request
-            // (user hasn't searched for another place). Weatherbit often returns the nearest
-            // station name (e.g. Rosebank) which can be km away; we prefer the reverse-geocoded
-            // suburb/neighbourhood from the user's actual coordinates.
-            const cur = dataRef.current?.data?.[0];
-            if (!cur) return;
-            const sameRequest =
-              Math.abs(cur.lat - pending.lat) < 0.1 &&
-              Math.abs(cur.lon - pending.lon) < 0.1;
-            if (sameRequest) setLocationDisplayName(body.displayName);
-          })
-          .catch(() => { });
-      },
-      () => { },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0,
-      }
-    );
-  }, [fetchByCoords]);
+  if (error) return <p className="text-sm text-red-600">{error}</p>;
+  if (!stats) return <Spinner />;
 
   return (
-    <div className="sky-bg min-h-screen transition-colors duration-300">
-      <main className="mx-auto w-full max-w-2xl px-4 pb-12 pt-6 sm:px-6 sm:pt-8 sm:pb-20 md:max-w-3xl md:px-8 md:pt-10 md:pb-24">
-        <header className="mb-6 flex flex-col gap-4 sm:mb-8 md:mb-10 md:flex-row md:items-center md:justify-between md:gap-6">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-800 sm:text-3xl md:text-[1.75rem]">
-              South African Weather
-            </h1>
-            <p className="mt-1 text-xs text-slate-600 md:mt-1.5">
-              Via{" "}
-              <a
-                href="https://www.weatherbit.io/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-sky-600 underline decoration-sky-300 hover:decoration-sky-500"
-              >
-                Weatherbit
-              </a>
-            </p>
+    <div className="animate-fade-in">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Welcome back 👋</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Here&apos;s what&apos;s happening across Creative Touch today.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          label="Active Clients"
+          value={String(stats.activeClients)}
+          hint={`${stats.totalClients} total`}
+          accent="text-slate-900"
+        />
+        <StatCard
+          label="Open Projects"
+          value={String(stats.openProjects)}
+          hint={`${stats.openTasks} open tasks`}
+          accent="text-sky-600"
+        />
+        <StatCard
+          label="Revenue (Paid)"
+          value={formatCurrency(stats.revenuePaid)}
+          hint="From paid invoices"
+          accent="text-emerald-600"
+        />
+        <StatCard
+          label="Outstanding"
+          value={formatCurrency(stats.revenueOutstanding)}
+          hint="Sent + overdue"
+          accent="text-amber-600"
+        />
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="p-5 lg:col-span-1">
+          <p className="text-sm font-medium text-slate-500">Sales Pipeline</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-violet-600">
+            {formatCurrency(stats.pipelineValue)}
+          </p>
+          <p className="mt-1 text-xs text-slate-400">Open leads (new, contacted, proposal)</p>
+          <Link
+            href="/leads"
+            className="mt-4 inline-block text-sm font-medium text-rose-600 hover:text-rose-700"
+          >
+            View pipeline →
+          </Link>
+        </Card>
+
+        <Card className="p-5">
+          <p className="mb-3 text-sm font-semibold text-slate-700">Projects by status</p>
+          <BarList data={stats.projectsByStatus} />
+        </Card>
+
+        <Card className="p-5">
+          <p className="mb-3 text-sm font-semibold text-slate-700">Invoices by status</p>
+          <BarList data={stats.invoicesByStatus} />
+        </Card>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-700">Upcoming tasks</p>
+            <Link href="/tasks" className="text-xs font-medium text-rose-600 hover:text-rose-700">
+              All tasks
+            </Link>
           </div>
-          <div className="w-full min-w-0 md:max-w-md md:shrink-0">
-            <SearchBar
-              onSearch={handleSearch}
-              onUseLocation={handleUseLocation}
-              onClearRecents={handleClearRecents}
-              isLoading={status === "loading"}
-              recentQueries={recentQueries}
-              currentLocation={currentLocation ?? undefined}
+          {stats.upcomingTasks.length === 0 ? (
+            <p className="text-sm text-slate-400">No open tasks.</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {stats.upcomingTasks.map((t) => {
+                const due = relativeDueLabel(t.due_date);
+                return (
+                  <li key={t.id} className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-slate-700">{t.title}</p>
+                      <p className="truncate text-xs text-slate-400">
+                        {t.project_name ?? "No project"}
+                        {t.assignee_name ? ` · ${t.assignee_name}` : ""}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 text-xs font-medium ${
+                        due.tone === "overdue"
+                          ? "text-red-600"
+                          : due.tone === "soon"
+                            ? "text-amber-600"
+                            : "text-slate-400"
+                      }`}
+                    >
+                      {due.label}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+
+        <Card className="p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-700">Recent leads</p>
+            <Link href="/leads" className="text-xs font-medium text-rose-600 hover:text-rose-700">
+              All leads
+            </Link>
+          </div>
+          {stats.recentLeads.length === 0 ? (
+            <p className="text-sm text-slate-400">No leads yet.</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {stats.recentLeads.map((l) => (
+                <li key={l.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-700">{l.company || l.name}</p>
+                    <p className="truncate text-xs text-slate-400">{l.service_interest}</p>
+                  </div>
+                  <Badge status={l.stage} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card className="p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-700">Upcoming posts</p>
+            <Link href="/content" className="text-xs font-medium text-rose-600 hover:text-rose-700">
+              Calendar
+            </Link>
+          </div>
+          {stats.upcomingPosts.length === 0 ? (
+            <p className="text-sm text-slate-400">Nothing scheduled.</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {stats.upcomingPosts.map((p) => (
+                <li key={p.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-700">{p.title}</p>
+                    <p className="truncate text-xs text-slate-400">
+                      {p.platform} · {p.client_name}
+                    </p>
+                  </div>
+                  <Badge status={p.status} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function BarList({ data }: { data: Record<string, number> }) {
+  const entries = Object.entries(data);
+  if (entries.length === 0) return <p className="text-sm text-slate-400">No data.</p>;
+  const max = Math.max(...entries.map(([, v]) => v), 1);
+  return (
+    <ul className="flex flex-col gap-2.5">
+      {entries.map(([key, value]) => (
+        <li key={key} className="flex items-center gap-3">
+          <span className="w-24 shrink-0 text-xs capitalize text-slate-500">{titleCase(key)}</span>
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-rose-400"
+              style={{ width: `${(value / max) * 100}%` }}
             />
           </div>
-        </header>
-
-        <div className="flex flex-col items-center gap-5 sm:gap-6 md:gap-8">
-          {status === "loading" && !data && (
-            <div
-              className="glass-card w-full animate-fade-in rounded-2xl p-10"
-              aria-busy="true"
-            >
-              <div className="flex flex-col items-center gap-4">
-                <div className="h-12 w-12 animate-pulse rounded-full bg-sky-200/80" />
-                <p className="text-sm font-medium text-slate-600">Loading weather…</p>
-              </div>
-            </div>
-          )}
-
-          {status === "error" && error && (
-            <div
-              className="glass-card w-full animate-fade-in rounded-2xl px-5 py-4 md:px-6 md:py-5"
-              role="alert"
-            >
-              <p className="font-semibold text-slate-800">Unable to load weather</p>
-              <p className="mt-1 text-sm text-slate-600">{error}</p>
-            </div>
-          )}
-
-          {status === "success" && data?.data?.[0] && (
-            <div className="weather-card glass-card w-full animate-fade-in-up rounded-2xl overflow-hidden">
-              <div ref={mainContentRef} className="scroll-mt-4 sm:scroll-mt-6">
-                {selectedDay === null ? (
-                  <CurrentWeather
-                  data={data.data[0]}
-                  locationDisplayName={locationDisplayName}
-                  embedded
-                />
-              ) : selectedDay.type === "forecast" ? (
-                <DayDetailView
-                  type="forecast"
-                  day={selectedDay.day}
-                  timezone={forecast?.timezone ?? history?.timezone ?? SA_TIMEZONE}
-                  locationName={currentLocation ?? data.data[0].city_name}
-                  onBackToCurrent={handleBackToCurrent}
-                  embedded
-                />
-              ) : (
-                <DayDetailView
-                  type="history"
-                  day={selectedDay.day}
-                  timezone={forecast?.timezone ?? history?.timezone ?? SA_TIMEZONE}
-                  locationName={currentLocation ?? data.data[0].city_name}
-                  onBackToCurrent={handleBackToCurrent}
-                  embedded
-                />
-              )}
-              </div>
-              <ForecastAndHistory
-                forecast={forecast}
-                history={history}
-                forecastStatus={forecastStatus}
-                historyStatus={historyStatus}
-                forecastError={forecastError}
-                historyError={historyError}
-                selectedDay={selectedDay}
-                onSelectDay={handleSelectDay}
-                embedded
-              />
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
+          <span className="w-5 shrink-0 text-right text-xs font-medium text-slate-600">{value}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
