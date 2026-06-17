@@ -140,16 +140,44 @@ export function Field({
 const inputClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-rose-400 focus:ring-2 focus:ring-rose-100 placeholder:text-slate-400";
 
-export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(inputClass, props.className)} {...props} />;
+export function Input({ onFocus, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      className={cn(inputClass, props.className)}
+      onFocus={(e) => {
+        // Number fields default to 0; selecting on focus prevents a stray
+        // trailing/leading digit when the user types over the existing value.
+        if (props.type === "number") e.currentTarget.select();
+        onFocus?.(e);
+      }}
+      {...props}
+    />
+  );
 }
 
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={cn(inputClass, "min-h-[80px] resize-y", props.className)} {...props} />;
 }
 
-export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={cn(inputClass, "appearance-none", props.className)} {...props} />;
+export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className={cn("relative", className)}>
+      <select className={cn(inputClass, "appearance-none pr-9")} {...props} />
+      <svg
+        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    </div>
+  );
 }
 
 export function Modal({
@@ -174,9 +202,9 @@ export function Modal({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 backdrop-blur-sm sm:items-center">
-      <div className="my-8 w-full max-w-lg animate-[fade-in_0.2s_ease-out] rounded-2xl bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[90vh] w-full max-w-lg animate-[fade-in_0.2s_ease-out] flex-col rounded-2xl bg-white shadow-xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
           <button
             onClick={onClose}
@@ -188,8 +216,10 @@ export function Modal({
             </svg>
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-slate-100 px-5 py-4">{footer}</div>}
+        <div className="overflow-y-auto px-5 py-4">{children}</div>
+        {footer && (
+          <div className="flex shrink-0 justify-end gap-2 border-t border-slate-100 px-5 py-4">{footer}</div>
+        )}
       </div>
     </div>
   );
